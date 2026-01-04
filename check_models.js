@@ -13,13 +13,11 @@ async function listModels() {
         // Let's brute-force check the ones we care about by trying to generate 1 token.
 
         const candidates = [
+            "gemini-2.0-flash-exp",
+            "gemini-exp-1206",
             "gemini-1.5-flash",
             "gemini-1.5-flash-latest",
-            "gemini-1.5-flash-001",
-            "gemini-1.5-flash-002",
-            "gemini-1.5-flash-8b",
-            "gemini-1.5-pro",
-            "gemini-1.0-pro",
+            "gemini-2.0-flash",
             "gemini-pro"
         ];
 
