@@ -72,8 +72,10 @@ export async function getMoviePoster(title: string, year?: string) {
         // Fallback: If searching with Year returned nothing, try without Year
         // (Only if it wasn't a network error)
         if (year) {
-            console.log(`No results for ${title} (${year}). Retrying without year...`);
-            return getMoviePoster(title);
+            // Strip year from the title if present before retrying
+            const titleWithoutYear = title.replace(/\s+\d{4}$/, '').trim();
+            console.log(`No results for ${title} (${year}). Retrying as "${titleWithoutYear}" without year filter...`);
+            return getMoviePoster(titleWithoutYear);
         }
 
         console.log(`❌ No poster found for: ${title}`);

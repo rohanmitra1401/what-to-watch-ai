@@ -35,8 +35,15 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing title or search query" }, { status: 400 });
         }
 
+        // Defensive: Strip any year pattern from the search query
+        // (e.g., "Interstellar 2014" → "Interstellar")
+        let cleanedQuery = tmdb_search_query || title;
+        if (cleanedQuery) {
+            cleanedQuery = cleanedQuery.replace(/\s+\d{4}$/, '').trim();
+        }
+
         // Try TMDB first
-        let posterUrl = await getMoviePoster(tmdb_search_query || title, year);
+        let posterUrl = await getMoviePoster(cleanedQuery, year);
 
         // Fallback to Wikipedia if TMDB fails or returns no poster
         if (!posterUrl) {
