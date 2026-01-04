@@ -17,11 +17,14 @@ export default function Home() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [currentVibe, setCurrentVibe] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleVibeSearch = async (vibe: string) => {
     setLoading(true);
     setError("");
     setMovies([]);
+    setCurrentVibe(vibe);
 
     try {
       const response = await fetch("/api/vibe", {
@@ -43,6 +46,43 @@ export default function Home() {
       setError("Something went wrong. The vibes were too strong (or our server hiccuped).");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const movieList = movies
+      .map((m) => `🎥 ${m.title} (${m.year})`)
+      .join("\n");
+
+    const shareText = `🎬 Vibe Reel found my cinematic match!
+
+My vibe: "${currentVibe}"
+
+${movieList}
+
+Find your vibe → what-to-watch-ai-vert.vercel.app`;
+
+    // Try native share API first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "My Vibe Reel Results",
+          text: shareText,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name === "AbortError") return;
+      }
+    }
+
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -85,14 +125,20 @@ export default function Home() {
             <div className="flex justify-between items-center border-b border-white/5 pb-6">
               <h2 className="text-2xl font-bold tracking-tight">Recommended for your vibe</h2>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  // Temporary visual feedback could be added here
-                }}
+                onClick={handleShare}
                 className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold transition-all"
               >
-                <Share2 className="w-3 h-3" />
-                Share Vibe
+                {copied ? (
+                  <>
+                    <Check className="w-3 h-3 text-green-400" />
+                    <span className="text-green-400">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3 h-3" />
+                    Share Vibe
+                  </>
+                )}
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -107,3 +153,4 @@ export default function Home() {
     </main>
   );
 }
+
