@@ -15,18 +15,28 @@ export interface ProviderResult {
 }
 
 // System instructions for all providers
-const SYSTEM_PROMPT = `You are the 'Vibe Reel' engine, a cinematic curator. Your goal is to map abstract human emotions, sensory descriptions, and natural language scenarios to exactly 3 cinematic masterpieces.
+const SYSTEM_PROMPT = `You are the 'Vibe Reel' engine, a cinematic curator. Your goal is to map abstract human emotions, sensory descriptions, and natural language scenarios to cinematic masterpieces.
 - Analyze the Aesthetic, Emotional Frequency, and Narrative Tension of the user's input.
-- Requirement: Return exactly 3 movies in a valid JSON array.
+- Requirement: Return exactly 4 movies in a valid JSON array.
 - Requirement: Each movie object must include: 'title', 'year', 'vibe_match' (a poetic, evocative explanation of why it fits the vibe), and 'tmdb_search_query' (the movie title ONLY, without year or extra text).
 - Diversity: Provide a mix of world cinema, classics, and modern hits. Avoid the most obvious choices unless they are a perfect fit.
 
 Output strictly valid JSON. No markdown formatting.`;
 
+// Build prompt with optional exclusion list
+function buildPrompt(userVibe: string, exclude: string[]): string {
+    let prompt = SYSTEM_PROMPT;
+    if (exclude.length > 0) {
+        prompt += `\n\nIMPORTANT: Do NOT recommend any of these movies (the user has already seen them): ${exclude.join(", ")}.`;
+    }
+    prompt += `\n\nUser Input: "${userVibe}"`;
+    return prompt;
+}
+
 // ============================================
 // GEMINI PROVIDER
 // ============================================
-async function tryGemini(userVibe: string): Promise<ProviderResult> {
+async function tryGemini(userVibe: string, exclude: string[] = []): Promise<ProviderResult> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.log("[Gemini] Skipping - GEMINI_API_KEY not configured");
@@ -34,7 +44,7 @@ async function tryGemini(userVibe: string): Promise<ProviderResult> {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const prompt = `${SYSTEM_PROMPT}\n\nUser Input: "${userVibe}"`;
+    const prompt = buildPrompt(userVibe, exclude);
 
     // Models to try in order of preference
     const models = [
@@ -76,7 +86,7 @@ async function tryGemini(userVibe: string): Promise<ProviderResult> {
 // ============================================
 // GROQ PROVIDER (Llama 3)
 // ============================================
-async function tryGroq(userVibe: string): Promise<ProviderResult> {
+async function tryGroq(userVibe: string, exclude: string[] = []): Promise<ProviderResult> {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
         console.log("[Groq] Skipping - GROQ_API_KEY not configured");
@@ -90,10 +100,14 @@ async function tryGroq(userVibe: string): Promise<ProviderResult> {
 
     console.log("[Groq] Trying llama-3.3-70b-versatile...");
 
+    const systemPrompt = exclude.length > 0
+        ? `${SYSTEM_PROMPT}\n\nIMPORTANT: Do NOT recommend any of these movies (the user has already seen them): ${exclude.join(", ")}.`
+        : SYSTEM_PROMPT;
+
     const response = await client.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             { role: "user", content: userVibe },
         ],
         response_format: { type: "json_object" },
@@ -114,7 +128,7 @@ async function tryGroq(userVibe: string): Promise<ProviderResult> {
 // ============================================
 // DEEPSEEK PROVIDER
 // ============================================
-async function tryDeepSeek(userVibe: string): Promise<ProviderResult> {
+async function tryDeepSeek(userVibe: string, exclude: string[] = []): Promise<ProviderResult> {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
         console.log("[DeepSeek] Skipping - DEEPSEEK_API_KEY not configured");
@@ -128,10 +142,14 @@ async function tryDeepSeek(userVibe: string): Promise<ProviderResult> {
 
     console.log("[DeepSeek] Trying deepseek-chat...");
 
+    const systemPrompt = exclude.length > 0
+        ? `${SYSTEM_PROMPT}\n\nIMPORTANT: Do NOT recommend any of these movies (the user has already seen them): ${exclude.join(", ")}.`
+        : SYSTEM_PROMPT;
+
     const response = await client.chat.completions.create({
         model: "deepseek-chat",
         messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             { role: "user", content: userVibe },
         ],
         response_format: { type: "json_object" },
@@ -152,12 +170,13 @@ async function tryDeepSeek(userVibe: string): Promise<ProviderResult> {
 // MAIN FALLBACK CHAIN
 // ============================================
 export async function generateMoviesWithFallback(
-    userVibe: string
+    userVibe: string,
+    exclude: string[] = []
 ): Promise<ProviderResult> {
     const providers = [
-        { name: "Gemini", fn: tryGemini },
-        { name: "Groq", fn: tryGroq },
-        { name: "DeepSeek", fn: tryDeepSeek },
+        { name: "Gemini", fn: (vibe: string) => tryGemini(vibe, exclude) },
+        { name: "Groq", fn: (vibe: string) => tryGroq(vibe, exclude) },
+        { name: "DeepSeek", fn: (vibe: string) => tryDeepSeek(vibe, exclude) },
     ];
 
     let lastError: Error | null = null;

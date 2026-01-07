@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { generateMoviesWithFallback } from "@/lib/ai/providers";
+import { generateMoviesWithFallback, Movie } from "@/lib/ai/providers";
 
 export async function POST(req: Request) {
   try {
-    const { userVibe } = await req.json();
+    const { userVibe, exclude = [] } = await req.json();
 
     console.log("Vibe Request Received:", userVibe);
+    if (exclude.length > 0) {
+      console.log("Excluding movies:", exclude);
+    }
 
     if (!userVibe || typeof userVibe !== "string") {
       return NextResponse.json(
@@ -14,14 +17,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Use the multi-provider fallback chain
-    const result = await generateMoviesWithFallback(userVibe);
+    // Use the multi-provider fallback chain with exclusion list
+    const result = await generateMoviesWithFallback(userVibe, exclude);
 
-    console.log(`Movies generated via ${result.provider}`);
+    // Dedupe: filter out any movies that match exclusion list (case-insensitive)
+    const excludeLower = exclude.map((t: string) => t.toLowerCase());
+    const uniqueMovies = result.movies.filter(
+      (movie: Movie) => !excludeLower.includes(movie.title.toLowerCase())
+    );
+
+    // Return top 3 unique movies
+    const finalMovies = uniqueMovies.slice(0, 3);
+
+    console.log(`Movies generated via ${result.provider} (${finalMovies.length} unique)`);
 
     return NextResponse.json({
-      movies: result.movies,
-      provider: result.provider, // Optional: expose which provider succeeded
+      movies: finalMovies,
+      provider: result.provider,
     });
   } catch (error: any) {
     console.error("Error generating vibes:", error);

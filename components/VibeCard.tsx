@@ -19,9 +19,18 @@ interface VibeCardProps {
 export function VibeCard({ movie, index }: VibeCardProps) {
     const [posterUrl, setPosterUrl] = useState<string | null>(null);
     const [loadingPoster, setLoadingPoster] = useState(true);
+    const [imageLoaded, setImageLoaded] = useState(false);
     const [ratings, setRatings] = useState<{ imdb: string | null; rottenTomatoes: string | null; metacritic: string | null } | null>(null);
 
     const watchUrl = `https://www.google.com/search?q=watch+${encodeURIComponent(movie.title + " " + movie.year)}`;
+
+    // Reset state when movie changes (for Roll Again smooth transitions)
+    useEffect(() => {
+        setPosterUrl(null);
+        setLoadingPoster(true);
+        setImageLoaded(false);
+        setRatings(null);
+    }, [movie.title, movie.year]);
 
     useEffect(() => {
         let isMounted = true;
@@ -91,14 +100,13 @@ export function VibeCard({ movie, index }: VibeCardProps) {
             {/* Poster Section */}
             <div className="aspect-[2/3] relative overflow-hidden bg-gray-950">
                 {loadingPoster ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin"></div>
-                    </div>
+                    <div className="absolute inset-0 skeleton-shimmer" />
                 ) : posterUrl ? (
                     <img
                         src={posterUrl}
                         alt={movie.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:rotate-1"
+                        onLoad={() => setImageLoaded(true)}
+                        className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-1 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                     />
                 ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-700 p-4 text-center">

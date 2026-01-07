@@ -43,3 +43,42 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #2a2a4e;
 }
+
+/* Toast animation */
+@keyframes toast-slide-in {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast-animate {
+  animation: toast-slide-in 0.3s ease-out;
+}
+
+/* Skeleton shimmer for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg,
+      #1a1a2e 0%,
+      #2a2a4e 25%,
+      #3a3a5e 50%,
+      #2a2a4e 75%,
+      #1a1a2e 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
